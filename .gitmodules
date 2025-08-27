@@ -1,0 +1,27 @@
+[submodule "cdk_backend/cdk_auth"]
+	path = cdk_backend/cdk_auth
+	url = https://github.com/gguilhermepires/cdk_auth.git
+[submodule "cdk_backend/cdk_backend_company"]
+	path = cdk_backend/cdk_backend_company
+	url = https://github.com/gguilhermepires/cdk_backend_company.git
+[submodule "cdk_backend/cdk_back_payment"]
+	path = cdk_backend/cdk_back_payment
+	url = https://github.com/gguilhermepires/cdk_back_payment.git
+[submodule "cdk_backend/cdk_shared_resources"]
+	path = cdk_backend/cdk_shared_resources
+	url = https://github.com/gguilhermepires/cdk_shared_resources.git
+[submodule "cdk_backend/cdk_library_shared"]
+	path = cdk_backend/cdk_library_shared
+	url = https://github.com/gguilhermepires/cdk_library_shared.git
+[submodule "cdk_front/cdk_front_app_shell"]
+	path = cdk_front/cdk_front_app_shell
+	url = https://github.com/gguilhermepires/cdk_front_app_shell.git
+[submodule "cdk_front/cdk_front_payment"]
+	path = cdk_front/cdk_front_payment
+	url = https://github.com/gguilhermepires/cdk_front_payment.git
+[submodule "cdk_front/cdk_front_login"]
+	path = cdk_front/cdk_front_login
+	url = https://github.com/gguilhermepires/cdk_front_login.git
+[submodule "cdk_front/cdk_front_build"]
+	path = cdk_front/cdk_front_build
+	url = https://github.com/gguilhermepires/cdk_front_build.git
