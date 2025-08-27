@@ -60,7 +60,9 @@
       "WebSearch",
       "Bash(C:UsersGUILHERME.localbinaider --version)",
       "Bash(\"/c/Users/GUILHERME/.local/bin/aider\" --version)",
-      "Bash(source ~/.bashrc)"
+      "Bash(source ~/.bashrc)",
+      "Bash(update-submodules.bat)",
+      "Bash(\"C:\\Users\\GUILHERME\\Desktop\\code\\cdk_projeto_ssass\\update-submodules.bat\")"
     ],
     "deny": [],
     "ask": [],
