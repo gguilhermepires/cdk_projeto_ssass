@@ -1,0 +1,224 @@
+# Payment Module Integration Rules
+
+This document defines the contract and integration rules between the frontend app "cdk_front_payment" and the backend service "cdk_back_payment". It clarifies that the frontend strictly consumes capabilities exposed by the backend, and specifies the expectations, dependencies, endpoints, authentication, error handling, and versioning strategy.
+
+## Scope
+
+- Frontend: cdk front/cdk_front_payment
+- Backend: cdk backend/cdk_back_payment
+- Objective: Ensure cdk_front_payment uses only public, versioned interfaces exposed by cdk_back_payment, never internal/private APIs or shared mutable state.
+
+## Source of Truth and Direction of Dependency
+
+- The backend (cdk_back_payment) is the single source of truth for payment data, business rules, and side-effects with third-party providers (e.g., payment gateways).
+- The frontend (cdk_front_payment) is a consumer that:
+  - Initiates payment-related actions by calling backend HTTP endpoints.
+  - Renders and manages client-side state derived from backend responses.
+  - Never bypasses the backend for authoritative decisions (authorization, payment status, refunds, etc.).
+- Any changes to domain shape or business logic start in the backend and are versioned. The frontend updates to consume the new versions.
+
+## Networking and Contracts
+
+- Protocol: HTTPS over REST JSON APIs.
+- Content-Type: application/json for requests and responses unless noted otherwise.
+- Timeouts: Frontend should enforce reasonable timeouts (e.g., 10–30s) and present retry UX where appropriate.
+- Idempotency: For operations like "create payment" or "retry capture", the frontend should pass an Idempotency-Key header if supported; the backend must treat it correctly.
+
+## Authentication and Authorization
+
+- Frontend includes an Authorization: Bearer <JWT> header for all protected endpoints.
+- JWT issuance/refresh flow is owned by the auth service; cdk_back_payment validates tokens and scopes/claims.
+- Frontend must:
+  - Handle 401 (unauthorized) by refreshing token or redirecting to login.
+  - Handle 403 (forbidden) by informing the user of insufficient permissions.
+
+## Versioning Policy
+
+- All backend payment endpoints are prefixed with a version: /api/payment/v1/...
+- Backwards-incompatible changes are introduced under a new version: /api/payment/v2/...
+- Frontend pins to a specific version per release. Upgrades are explicit and tested.
+
+## Environment Configuration
+
+Frontend must not hardcode URLs. It reads environment-specific base URLs from configuration:
+
+- Example variables:
+  - PAYMENT_API_BASE_URL (e.g., https://api.example.com/api/payment/v1)
+- The backend is responsible for exposing environment-specific endpoints and CORS settings to allow the frontend origin(s).
+
+## Endpoint Catalog (illustrative)
+
+Note: Final shapes must match cdk_back_payment implementation. The following contract describes the intended public surface. The backend owns the canonical OpenAPI; the frontend consumes it.
+
+1) POST /api/payment/v1/payments
+- Purpose: Create a new payment intent/order.
+- Request body:
+  {
+    "amount": number,            // cents or smallest currency unit
+    "currency": "string",        // ISO 4217
+    "method": "string",          // e.g., "card", "pix", "boleto"
+    "metadata": { "key": "val" } // optional
+  }
+- Response 201:
+  {
+    "id": "string",
+    "status": "requires_action|processing|succeeded|failed",
+    "clientSecret": "string",     // if client confirmation is needed
+    "nextAction": { ... },        // provider-specific next-step info
+    "createdAt": "ISO-8601"
+  }
+- Errors: 400 (validation), 401/403 (auth), 409 (duplicate/idempotency), 5xx.
+
+2) POST /api/payment/v1/payments/{paymentId}/confirm
+- Purpose: Confirm/authorize/capture as required by provider flow.
+- Request body (optional, depending on method):
+  {
+    "paymentMethodData": { ... }  // device or provider artifacts
+  }
+- Response 200:
+  {
+    "id": "string",
+    "status": "processing|succeeded|failed",
+    "receiptUrl": "string|null",
+    "providerRef": "string|null"
+  }
+
+3) GET /api/payment/v1/payments/{paymentId}
+- Purpose: Retrieve a payment by id.
+- Response 200:
+  {
+    "id": "string",
+    "amount": number,
+    "currency": "string",
+    "status": "requires_action|processing|succeeded|failed|refunded",
+    "createdAt": "ISO-8601",
+    "updatedAt": "ISO-8601",
+    "metadata": { ... }
+  }
+
+4) POST /api/payment/v1/payments/{paymentId}/refund
+- Purpose: Refund a payment (full or partial).
+- Request body:
+  {
+    "amount": number|null, // null for full
+    "reason": "string|null"
+  }
+- Response 202:
+  {
+    "refundId": "string",
+    "status": "pending|succeeded|failed"
+  }
+
+5) GET /api/payment/v1/methods
+- Purpose: List available payment methods for the current user/account/region.
+- Response 200:
+  {
+    "methods": [
+      { "code": "card", "label": "Credit/Debit Card" },
+      { "code": "pix", "label": "PIX" }
+    ]
+  }
+
+The backend may provide more endpoints (webhooks, reconciliation), but only versioned, documented routes are considered public for the frontend.
+
+## Error Model
+
+- Response shape for errors:
+  {
+    "error": {
+      "code": "string",           // machine-readable
+      "message": "string",        // user-friendly fallback
+      "details": { ... }          // optional, structured
+    }
+  }
+- HTTP codes:
+  - 400: ValidationError (frontend should validate preflight where possible).
+  - 401: Unauthorized (trigger token refresh or login).
+  - 403: Forbidden (insufficient permissions).
+  - 404: NotFound (show not found or retry guidance).
+  - 409: Conflict (idempotency or state mismatch).
+  - 422: Unprocessable (business rule violated).
+  - 429: TooManyRequests (throttle UX).
+  - 5xx: ServerError (show retry, log, non-blocking fallback where safe).
+
+Frontend rule: never assume success; always branch on HTTP code and, on non-2xx, read error.error.code to determine UX messaging and remediation.
+
+## CORS and Security
+
+- Backend must configure CORS to allow only the known frontend origins per environment.
+- No wildcard Access-Control-Allow-Origin in production.
+- Cookies (if used) are SameSite=strict/lax and Secure; tokens should be short-lived with refresh flows.
+- Frontend must not store secrets; only tokens from auth flow are used.
+
+## State Management and UI in the Frontend
+
+- Frontend global state stores only data derived from backend responses (e.g., current payment, list of methods).
+- All writes go through service layer functions that call backend endpoints.
+- Example service functions:
+  - paymentService.createPayment(request): Promise<CreatePaymentResponse>
+  - paymentService.confirmPayment(paymentId, data): Promise<ConfirmResponse>
+  - paymentService.getPayment(paymentId): Promise<Payment>
+  - paymentService.refundPayment(paymentId, body): Promise<RefundResponse>
+  - paymentService.listMethods(): Promise<MethodsResponse>
+- UI components dispatch actions to thunks/sagas that use these services; they do not hardcode fetch logic inline.
+
+## Logging, Observability, and Correlation
+
+- Frontend must pass a correlation/request-id header if available (e.g., X-Request-ID). If not generated by the backend, frontend may generate a UUID per user action.
+- Backend should echo correlation ID in responses and logs.
+- Errors surfaced to the user should be accompanied by a short code that can be cross-referenced in backend logs.
+
+## Idempotency and Retries
+
+- For user-initiated payment submissions, frontend should include Idempotency-Key when retrying the same logical action to avoid duplicate charges.
+- Backend ensures idempotent handling per key within a reasonable TTL.
+
+## Webhooks (Backend-internal)
+
+- Webhooks from payment providers are handled exclusively by the backend.
+- Frontend never receives direct webhook calls.
+- Backend updates payment status and exposes it via GET endpoints; the frontend polls or uses server-sent events/WebSocket if provided and documented under the same version.
+
+## Performance and Rate Limits
+
+- Backend may enforce rate limits; frontend should:
+  - Debounce rapid user actions.
+  - Handle 429 with exponential backoff and user feedback.
+- Payload size should be minimal; avoid sending unnecessary metadata.
+
+## Breaking Changes Procedure
+
+- Backend introduces changes under a new version and updates OpenAPI.
+- Frontend aligns to the new version, updates service layer types, and adjusts UI.
+- The old version is deprecated with a communicated timeline; both versions may run in parallel during migration.
+
+## Testing Expectations
+
+- Backend provides contract tests and an OpenAPI spec.
+- Frontend consumes the OpenAPI spec to generate types or validate requests and responses at build/test time.
+- E2E tests validate the full flow:
+  - Create payment -> confirm -> success receipt
+  - Failure paths and retries
+  - Refund paths where applicable
+
+## Example Headers
+
+- Required on protected requests:
+  - Authorization: Bearer <JWT>
+  - Content-Type: application/json
+  - Accept: application/json
+  - X-Request-ID: <uuid> (recommended)
+  - Idempotency-Key: <uuid> (for create/confirm/refund as applicable)
+
+## Clear Statement of Dependency
+
+- cdk_front_payment depends on cdk_back_payment. The frontend must only use versioned, documented public endpoints of cdk_back_payment.
+- cdk_back_payment does not depend on cdk_front_payment. It is designed to be consumed by multiple clients. Any UI-specific assumptions are invalid at the backend layer.
+
+## Change Management
+
+- Any change request that affects payload shapes, error codes, or flow must start with an update to the backend contract (OpenAPI), followed by:
+  1) Backend implementation and deployment to non-prod.
+  2) Frontend update to target new API version.
+  3) Integration testing.
+  4) Coordinated production rollout.

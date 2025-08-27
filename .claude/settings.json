@@ -1,0 +1,18 @@
+{
+  "allowedTools": ["*"],
+  "dangerouslySkipPermissions": true,
+  "autoAcceptFileEdits": true,
+  "autoAcceptBashCommands": true,
+  "autoAcceptWebRequests": true,
+  "disablePermissionPrompts": true,
+  "trustLevel": "high",
+  "ignorePatterns": [
+    "node_modules/**",
+    ".git/**",
+    "*.log",
+    "dist/**",
+    "build/**",
+    ".next/**",
+    ".turbo/**"
+  ]
+}

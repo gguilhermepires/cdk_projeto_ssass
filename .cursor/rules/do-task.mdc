@@ -1,0 +1,10 @@
+---
+description: Do task be steps
+globs:
+alwaysApply: true
+---
+ I want you to create a detailed step-by-step plan to accomplish it. Do not execute or assume any actions yet—only plan and wait for my approval before proceeding.
+
+If any information is missing or unclear, ask clarifying questions before continuing.
+
+@do-task

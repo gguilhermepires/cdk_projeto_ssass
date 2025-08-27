@@ -1,0 +1,47 @@
+---
+alwaysApply: true
+---
+# Project Structure Overview
+
+This document outlines the key structural components of my project.
+
+# Micro Frontend Overview
+
+The `cdk front` folder houses your micro frontend application, which is composed of several independent front-end modules and utility scripts.
+
+## Folder Structure:
+
+*   **`cdk_front_payment/`**: This directory likely contains the code for the payment-related micro frontend, handling user interfaces and logic for payment processing.
+*   **`cdk_front_login/`**: This suggests a micro frontend dedicated to user authentication and login functionalities.
+*   **`cdk_front_app_shell/`**: This is typically where the main application shell or container for your micro frontends resides. It's responsible for orchestrating and loading the different micro frontends.
+*   **`cdk_front_build/`**: This directory probably contains build-related scripts, configurations, or output for your front-end applications.
+*   **`cdk_front_home/`**: This likely represents the micro frontend for the main home page or dashboard of your application.
+
+## Files:
+
+*   **`runShell.bat`**: This batch file is probably used to open a command shell (like PowerShell or CMD) configured with the necessary environment variables or paths for developing or managing your front-end projects.
+*   **`runAll.bat`**: This batch file suggests a script designed to run multiple commands or start several front-end services/build processes simultaneously, likely for local development or testing.
+
+## Microservices Backend
+
+- **Location**: `cdk backend` folder
+- **Description**: This directory houses the backend microservices.
+
+### Backend Microservices Breakdown:
+
+- **`cdk_payments/`**: Responsible for payment processing.
+- **`cdk_lodge/`**: Handles lodging-related functionalities (e.g., bookings, accommodations).
+- **`cdk_library_shared/`**: Contains shared code, utilities, or constructs reused across backend services.
+- **`cdk_shared_resources/`**: Manages shared infrastructure resources (e.g., databases, networking) used by multiple microservices.
+- **`cdk_auth/`**: Manages authentication and authorization for users.
+
+---
+
+## Development Rules & Conventions
+
+### Service Template (`service-template`)
+
+- Use our internal RPC pattern when defining services.
+- Always use `snake_case` for service names.
+
+@project-structure
